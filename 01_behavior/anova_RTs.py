@@ -33,7 +33,7 @@ for subject in subjects:
     pRTb = list()
     rRTb = list()
 
-    for i in range(1, 5): 
+    for i in range(1, 5):
         fname_behav = op.join(path_data, 'behav', f'{subject}-{i}.pkl')
         behav_df = pd.read_pickle(fname_behav)
         behav_df.reset_index(inplace=True)
@@ -41,18 +41,18 @@ for subject in subjects:
         aRT.append(behav_df['RTs'][np.where(behav_df['triplets'].isin([30, 32, 34]))[0]].mean())
         pRT.append(behav_df['RTs'][np.where(behav_df['triplets'] == 30)[0]].mean())
         rRT.append(behav_df['RTs'][np.where((behav_df['triplets'] == 32))[0]].mean())
-        
+
         nblocks = np.unique(behav_df['blocks'])
         for block in nblocks:
             block_df = behav_df[behav_df['blocks'] == block].reset_index(drop=True)
             aRTb.append(block_df['RTs'][np.where(block_df['triplets'].isin([30, 32, 34]))[0]].mean())
             pRTb.append(block_df['RTs'][np.where(block_df['triplets'] == 30)[0]].mean())
             rRTb.append(block_df['RTs'][np.where((block_df['triplets'] == 32))[0]].mean())
-    
+
     all_RTb.append(np.array(aRTb))
     pat_RTb.append(np.array(pRTb))
     rand_RTb.append(np.array(rRTb))
-        
+
     all_RT.append(np.array(aRT))
     pat_RT.append(np.array(pRT))
     rand_RT.append(np.array(rRT))
