@@ -117,7 +117,7 @@ for col, net_name in enumerate(net_order):
     regions = net_groups[net_name]
     color = net_cmap[net_name]
     for row, network in enumerate(regions):
-        
+
         ax = axes[row, col]
         region_label = network.split('-')[1]
         data = data_arr[network][:, 3:].mean(1)  # (n_subjects, n_times)
@@ -132,18 +132,18 @@ for col, net_name in enumerate(net_order):
 
         # Non-sig line
         ax.plot(times, data.mean(0), alpha=1, zorder=10, color='C7')
-        
+
         # Sig regions in color
         sig = sig_dict[network] if network in sig_dict else np.zeros(data.shape[1], dtype=bool)
         for start, end in contiguous_regions(sig):
             ax.plot(times[start:end], data.mean(0)[start:end], alpha=1, zorder=10, color=color)
-            
+
         sig_level = sig_df[sig_df['network'] == network]['signif_holm'].values[0]
         if sig_level != 'ns':
             if net_name != 'Cont':
                 x, y = 0.4, -0.25
             else:
-                x, y = 0.13, -0.25 
+                x, y = 0.13, -0.25
             ax.text(x, y, sig_level, fontsize=20, ha='center', va='bottom', color=color, weight='bold')
 
         ax.fill_between(times, data.mean(0) - sem, data.mean(0) + sem, alpha=0.2, zorder=5, facecolor='C7')
@@ -153,7 +153,7 @@ for col, net_name in enumerate(net_order):
         if row == 0:
             ax.set_title(f'{net_labels[net_name]}', fontsize=11,
                          color=color)
-        
+
         ax.text(0.05, 0.15, region_label, transform=ax.transAxes,
                 fontsize=10, va='top', ha='left', color='k', fontstyle='italic')
 
@@ -167,7 +167,7 @@ for col, net_name in enumerate(net_order):
 
     for row in range(len(regions), n_rows):
         axes[row, col].set_visible(False)
-        
+
 # fig.suptitle("Representational change: contrast in subregions of significant networks", fontsize=12, fontweight='bold')
 
 fig.savefig(figures_dir / "rsa-net-supp-regions2.pdf", transparent=True)

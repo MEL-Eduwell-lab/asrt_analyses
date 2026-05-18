@@ -94,13 +94,11 @@ c6 = "#029E73"
 cpat = "#FAD510"
 crdm = "#FF718B"
 
-plt.rcParams.update({'font.size': 12, 'font.family': 'serif', 'font.serif': 'Arial'})
+plt.rcParams.update({'font.size': 10, 'font.family': 'serif', 'font.serif': 'Arial'})
 
-fig, axd = plt.subplot_mosaic(outer, 
-                              figsize=(15, 7), 
-                              layout='tight',
-                            #   gridspec_kw={'height_ratios': [0.5]}
-                              )
+fig, axd = plt.subplot_mosaic(outer,
+                              figsize=(15, 7),
+                              layout='tight')
 for ax in axd.values():
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -113,7 +111,7 @@ sem_high = np.std(high, axis=0) / np.sqrt(len(subjects))
 sem_low = np.std(low, axis=0) / np.sqrt(len(subjects))
 axd['A'].axhline(0, color='grey', alpha=0.5)
 axd['A'].plot(times, high.mean(0), alpha=1, zorder=10, color=cpat, label='Pattern')
-axd['A'].fill_between(times, high.mean(0) - sem_high, high.mean(0) + sem_high, alpha=0.2, zorder=5, facecolor=cpat)    
+axd['A'].fill_between(times, high.mean(0) - sem_high, high.mean(0) + sem_high, alpha=0.2, zorder=5, facecolor=cpat)
 axd['A'].plot(times, low.mean(0), alpha=1, zorder=10, color=crdm, label='Random')
 axd['A'].fill_between(times, low.mean(0) - sem_low, low.mean(0) + sem_low, alpha=0.1, zorder=5, facecolor=crdm)
 axd['A'].legend(frameon=False, loc='upper left')
@@ -123,7 +121,7 @@ axd['A'].set_xlabel('Time (s)', fontsize=11)
 axd['A'].set_title(f'Mahalanobis distance within pairs', fontsize=13)
 
 ### B ### Similarity index
-gam_sig = pd.read_csv(FIGURES_DIR / "TM" / "segments_tr_sensors.csv")
+gam_sig = pd.read_csv(FIGURES_DIR / "TM" / "segments_tr_sensors_step1.csv")
 gam_sig = gam_sig[gam_sig['metric'] == 'RS']
 arr = np.zeros(len(times), dtype=bool)
 arr[gam_sig['start'][0]:gam_sig['end'][0] + 1] = True
@@ -152,7 +150,7 @@ cohen_d_B = diff_lh_cluster.mean() / diff_lh_cluster.std(ddof=1)
 print(f"[B] Cohen's d (cluster-averaged): {cohen_d_B:.2f}")
 
 ### C ### Correlation with learning index
-gam_sig_corr = pd.read_csv(FIGURES_DIR / "TM" / "segments_tr_sensors.csv")
+gam_sig_corr = pd.read_csv(FIGURES_DIR / "TM" / "segments_tr_sensors_step1.csv")
 gam_sig_corr = gam_sig_corr[gam_sig_corr['metric'] == 'RS CORR']
 arr_corr = np.zeros(len(times), dtype=bool)
 arr_corr[gam_sig_corr['start'][1]:gam_sig_corr['end'][1] + 1] = True
@@ -160,6 +158,7 @@ diff_c = diff_b - np.nanmean(diff_b, axis=1, keepdims=True) # Center diff_b for 
 axd['C'].axhline(0, color="grey", alpha=0.5)
 all_rhos = np.array([[spear(learn_index_blocks.iloc[sub], diff_c[sub, :, t])[0] for t in range(len(times))] for sub in range(len(subjects))])
 all_rhos, _, _ = fisher_z_and_ttest(all_rhos)
+_rhos_mean = np.nanmean(all_rhos, axis=0)
 sem = np.nanstd(all_rhos, axis=0) / np.sqrt(len(subjects))
 p_values = decod_stats(all_rhos, -1)
 sig = p_values < 0.05
@@ -180,6 +179,13 @@ axd['C'].set_title('Similarity index and learning correlation time course', font
 cmap = plt.cm.get_cmap('tab20', len(subjects))
 mdiff = diff_b[:, :, arr].mean(-1)
 mdiff = mdiff - np.nanmean(mdiff, axis=1, keepdims=True)  # center by subject
+fit_rows = []
+for sub, subject in enumerate(subjects):
+    for b, block in enumerate(learn_index_blocks.columns):
+        fit_rows.append({'subject': subject, 'block': block,
+                         'similarity_index': mdiff[sub, b],
+                         'learning_index': learn_index_blocks.iloc[sub, b]})
+pd.DataFrame(fit_rows).set_index(['subject', 'block']).to_csv(figures_dir / "rsa_sensors_fit.csv")
 slopes, intercepts = [], []
 # Plot for individual subjects
 for sub, subject in enumerate(subjects):
@@ -202,16 +208,25 @@ for sub in range(len(subjects)):
 pval = ttest_1samp(rhos, 0)[1]
 rval_m = np.mean(rhos)
 rval_sem = np.std(rhos) / np.sqrt(len(subjects))
-print(f"Spearman's rho: {np.mean(rhos):.2f}, p-value: {pval:.3f}")
-ptext = f"R = {rval_m:.2f} ± {rval_sem:.2f}\n$p$ = {pval:.2f}" if pval > 0.001 else f"R = {rval_m:.2f} ± {rval_sem:.2f}\n$p$ < 0.001"
+print(f"Spearman's rho: {np.mean(rhos):.2f}, p-value: {pval:.5f}")
+ptext = f"R = {rval_m:.2f} ± {rval_sem:.2f}"
 axd['D'].legend(frameon=False, title=ptext, loc='lower right')
 if pval < 0.05:
     axd['D'].text(-1.4, -40, '*', fontsize=25, ha='center', va='center', color='black', weight='bold')
 
 ### Save figure ###
-fname = 'rsa_figure.pdf'
+fname = 'rsa_figure_v2.pdf'
 plt.savefig(figures_dir /  fname, transparent=True)
 plt.close()
+
+t_labels = np.round(times, 4)
+pd.DataFrame({
+    'pattern': high.mean(0),
+    'random': low.mean(0),
+    'similarity_index': diff_lh.mean(0),
+    'correlation': _rhos_mean,
+}, index=t_labels).rename_axis('time').to_csv(figures_dir / "rsa_sensors.csv")
+
 
 # ---------------------- No practice correlation figure ----------------------
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 3), layout='tight')
@@ -228,6 +243,7 @@ ax1.axvspan(0, 0.2, facecolor='grey', edgecolor=None, zorder=-1, alpha=.1)
 ax1.axhline(0, color="grey", alpha=0.5)
 all_rhos = np.array([[spear(learn_index_blocks.iloc[sub, 3:], diff_c[sub, 3:, t])[0] for t in range(len(times))] for sub in range(len(subjects))])
 all_rhos, _, _ = fisher_z_and_ttest(all_rhos)
+_rhos_no_prac_mean = np.nanmean(all_rhos, axis=0)
 sem = np.nanstd(all_rhos, axis=0) / np.sqrt(len(subjects))
 sig = arr2.copy()
 ax1.plot(times, np.nanmean(all_rhos, axis=0), alpha=1, zorder=10, color='C7')
@@ -243,12 +259,21 @@ ax1.set_xlabel('Time (s)', fontsize=11)
 ax1.set_title('Similarity index and learning correlation time course', fontsize=13)
 ### Learning index fit ###
 cmap = plt.cm.get_cmap('tab20', len(subjects))
-gam_sig = pd.read_csv(FIGURES_DIR / "TM" / "segments_tr_sensors.csv")
-gam_sig = gam_sig[gam_sig['metric'] == 'RS']
+# gam_sig = pd.read_csv(FIGURES_DIR / "TM" / "segments_tr_sensors.csv")
+gam_sig_corr = pd.read_csv(FIGURES_DIR / "TM" / "segments_tr_sensors_step1.csv")
+gam_sig = gam_sig_corr[gam_sig_corr['metric'] == 'RS']
 arr = np.zeros(len(times), dtype=bool)
 arr[gam_sig['start'][0]:gam_sig['end'][0] + 1] = True
 mdiff = diff_b[:, 3:, arr].mean(-1)
 mdiff = mdiff - np.nanmean(mdiff, axis=1, keepdims=True)  # center by subject
+fit_rows_np = []
+block_cols_np = learn_index_blocks.columns[3:]
+for sub, subject in enumerate(subjects):
+    for b, block in enumerate(block_cols_np):
+        fit_rows_np.append({'subject': subject, 'block': block,
+                            'similarity_index': mdiff[sub, b],
+                            'learning_index': learn_index_blocks.iloc[sub, 3:].iloc[b]})
+pd.DataFrame(fit_rows_np).set_index(['subject', 'block']).to_csv(figures_dir / "rsa_sensors_no_prac_fit.csv")
 slopes, intercepts = [], []
 # Plot for individual subjects
 for sub, subject in enumerate(subjects):
@@ -271,8 +296,8 @@ for sub in range(len(subjects)):
 pval = ttest_1samp(rhos, 0)[1]
 rval_m = np.mean(rhos)
 rval_sem = np.std(rhos) / np.sqrt(len(subjects))
-print(f"Spearman's rho: {np.mean(rhos):.2f}, p-value: {pval:.3f}")
-ptext = f"R = {rval_m:.2f} ± {rval_sem:.2f}\n$p$ = {pval:.2f}" if pval > 0.001 else f"R = {rval_m:.2f} ± {rval_sem:.2f}\n$p$ < 0.001"
+print(f"Spearman's rho: {np.mean(rhos):.2f}, p-value: {pval:.4f}")
+ptext = f"R = {rval_m:.2f} ± {rval_sem:.2f}\n$p$ = {pval:.4f}" if pval > 0.001 else f"R = {rval_m:.2f} ± {rval_sem:.2f}\n$p$ < 0.001"
 ax2.legend(frameon=False, title=ptext, loc='lower right')
 if pval < 0.05:
     ax2.text(-1.5, -25, '*', fontsize=25, ha='center', va='center', color='black', weight='bold')
@@ -280,3 +305,7 @@ if pval < 0.05:
 fname = 'rsa_no_prac_corr.pdf'
 plt.savefig(figures_dir /  fname, transparent=True)
 plt.close()
+
+pd.DataFrame({
+    'correlation': _rhos_no_prac_mean,
+}, index=t_labels).rename_axis('time').to_csv(figures_dir / "rsa_sensors_no_prac.csv")

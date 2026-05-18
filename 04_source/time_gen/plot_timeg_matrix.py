@@ -5,6 +5,7 @@ from base import ensured
 from config import *
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from scipy.stats import ttest_1samp
 from tqdm.auto import tqdm
 from mne.viz import Brain
@@ -92,7 +93,7 @@ fig, axes = plt.subplot_mosaic(design, figsize=(13, 18), sharey=False, sharex=Fa
                             #    gridspec_kw={'height_ratios': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1.5],
                                gridspec_kw={'height_ratios': [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
                                             'width_ratios': [.2, .2, .5, .5, .5]})
-plt.rcParams.update({'font.size': 10, 'font.family': 'serif', 'font.serif': 'Arial'})
+plt.rcParams.update({'font.size': 10, 'font.family': 'sans-serif', 'font.sans-serif': 'Arial'})
 ### Plot brain ###
 if plot_brains:
     brain_kwargs = dict(hemi='both', background="white", cortex="low_contrast", surf='inflated', subjects_dir=subjects_dir, size=(800, 400))
@@ -101,12 +102,12 @@ if plot_brains:
         # Initialize Brain object
         # Add labels
         if label in networks[:-3]:
-            brain = Brain(subject='fsaverage2', alpha=1, **brain_kwargs) 
+            brain = Brain(subject='fsaverage2', alpha=1, **brain_kwargs)
             for hemi in ['lh', 'rh']:
             # hemi = 'split'
                 brain.add_label(f'{label}', color=cmap[i], hemi=hemi, alpha=.85, subdir='n7')
         else:
-            brain = Brain(subject='fsaverage2', alpha=.5, **brain_kwargs) 
+            brain = Brain(subject='fsaverage2', alpha=.5, **brain_kwargs)
             if label == 'Hippocampus':
                 labels = ['Left-Hippocampus', 'Right-Hippocampus']
             elif label == 'Thalamus':
@@ -114,7 +115,7 @@ if plot_brains:
             else:
                 labels = ['Left-Cerebellum-Cortex', 'Right-Cerebellum-Cortex']
             brain.add_volume_labels(aseg='aseg', labels=labels, colors=cmap[i], alpha=.85, legend=False)
-        
+
         # Capture snapshots for the desired views
         brain.show_view('lateral', distance="auto")
         lateral_img = brain.screenshot('rgb')
@@ -154,7 +155,7 @@ for i, (network, pattern_idx) in enumerate(zip(networks, ['a1', 'b1', 'c1', 'd1'
         cbar = fig.colorbar(im, ax=axes[pattern_idx], location='top', fraction=.1, ticks=[vmin, vmax])
         cbar.set_label('Accuracy')
 
-### Random ###    
+### Random ###
 for i, (network, random_idx) in enumerate(zip(networks, ['a2', 'b2', 'c2', 'd2', 'e2', 'f2', 'g2', 'h2', 'i2', 'k2'])):
     im = axes[random_idx].imshow(randoms[network][:, 3:].mean((0, 1)),
                                  interpolation="lanczos",
@@ -217,3 +218,19 @@ for i, (network, contrast_idx) in enumerate(zip(networks, ['a3', 'b3', 'c3', 'd3
         cbar.set_label("Difference in accuracy")
 fig.savefig(figures_dir / "timeg-matrix.pdf", transparent=True)
 plt.close()
+
+t_labels = np.round(times, 4)
+rows = []
+for network in networks:
+    pat_mat = patterns[network][:, 3:].mean((0, 1))
+    rand_mat = randoms[network][:, 3:].mean((0, 1))
+    cont_mat = contrasts[network][:, 3:].mean((0, 1))
+    for ti, train_time in enumerate(t_labels):
+        for gi, test_time in enumerate(t_labels):
+            rows.append({'network': network,
+                         'train_time': train_time,
+                         'test_time': test_time,
+                         'pattern': pat_mat[ti, gi],
+                         'random': rand_mat[ti, gi],
+                         'contrast': cont_mat[ti, gi]})
+pd.DataFrame(rows).set_index(['network', 'train_time', 'test_time']).to_csv(figures_dir / "timeg_matrix.csv")

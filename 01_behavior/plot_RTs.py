@@ -164,6 +164,16 @@ all_blocks_df = pd.DataFrame.from_dict(all_blocks, orient='index')
 if not op.exists(figures_dir / 'behav' / 'all_blocks.csv'):
     all_blocks_df.to_csv(figures_dir / 'behav' / 'all_blocks.csv', sep=',')
 
+# Combined per-block means across subjects (blocks as rows)
+combined_blocks_df = pd.DataFrame({
+    'all': all_blocks_df.mean(axis=0),
+    'pattern': pattern_blocks_df.mean(axis=0),
+    'random': random_high_blocks_df.mean(axis=0),
+    'learning_index': learn_index_blocks_df.mean(axis=0),
+})
+combined_blocks_df.index.name = 'block'
+combined_blocks_df.to_csv(figures_dir / 'behav' / 'rt_blocks_combined.csv', sep=',')
+
 # Combined RT and learning index
 plt.rcParams.update({'font.family': 'serif', 'font.serif': 'Arial'})
 fig, ax = plt.subplots(1, 1, figsize=(6, 6), layout="tight")
@@ -173,26 +183,26 @@ blocks = [str(i) for i in range(1, 24)]
 x = np.arange(len(blocks))
 width = 0.3
 # Reaction times
-for subject in subjects:
-    for j, i in enumerate(blocks):
-        xpos = x[j]
-        # All (center, no dodge)
-        ax.scatter(xpos, all_blocks_df.loc[subject][i],
-                   color='grey', marker=".", alpha=0.8)
-        if i not in ['1', '2', '3']:
-            # Pattern (dodged left)
-            ax.scatter(xpos - width, pattern_blocks_df.loc[subject][i],
-                       color=color1, marker=".", alpha=0.8)
-            # Random (dodged right)
-            ax.scatter(xpos + width, random_high_blocks_df.loc[subject][i],
-                       color=color2, marker=".", alpha=0.8)
+# for subject in subjects:
+#     for j, i in enumerate(blocks):
+#         xpos = x[j]
+#         # All (center, no dodge)
+#         ax.scatter(xpos, all_blocks_df.loc[subject][i],
+#                    color='grey', marker=".", alpha=0.8)
+#         if i not in ['1', '2', '3']:
+#             # Pattern (dodged left)
+#             ax.scatter(xpos - width, pattern_blocks_df.loc[subject][i],
+#                        color=color1, marker=".", alpha=0.8)
+#             # Random (dodged right)
+#             ax.scatter(xpos + width, random_high_blocks_df.loc[subject][i],
+#                        color=color2, marker=".", alpha=0.8)
 ax.plot(x, all_blocks_df.mean(axis=0), '-o',
         color=color3, label="All", markersize=7, alpha=.7)
 ax.plot(x[3:] - width, pattern_blocks_df.mean(axis=0)[3:], '-o',
         color=color1, label="Pattern", markersize=7, alpha=1)
 ax.plot(x[3:] + width, random_high_blocks_df.mean(axis=0)[3:], '-o',
         color=color2, label="Random", markersize=7, alpha=1)
-ax.legend(loc='lower left', frameon=False, title=f"N = {n}")
+ax.legend(loc='lower left', frameon=False, title=f"n = {n}")
 ax.set_ylabel("Reaction time (ms)", fontsize=12)
 ax.spines['top'].set_visible(False)
 ax.spines['right'].set_visible(False)
@@ -211,75 +221,5 @@ axlow.spines['right'].set_visible(False)
 axlow.set_xticks(x)
 axlow.set_xticklabels(blocks)
 axlow.set_xlabel("Block", fontsize=12)
-# fig.savefig(figures_dir / 'behav' / 'combined_blocks.pdf', transparent=True)
-# plt.close()
-
-# Combined RT and learning index: suggested dot visibility variant
-fig_suggested, ax_suggested = plt.subplots(1, 1, figsize=(6, 6), layout="tight")
-ax_suggested.autoscale()
-subject_jitter = np.linspace(-0.08, 0.08, n)
-dot_size = 22
-mean_path_effects = [pe.Stroke(linewidth=4, foreground="white"), pe.Normal()]
-all_blocks_mean = all_blocks_df.loc[:, blocks].mean(axis=0)
-pattern_blocks_mean = pattern_blocks_df.loc[:, blocks].mean(axis=0)
-random_high_blocks_mean = random_high_blocks_df.loc[:, blocks].mean(axis=0)
-
-for subject_idx, subject in enumerate(subjects):
-    jitter = subject_jitter[subject_idx]
-    for j, i in enumerate(blocks):
-        xpos = x[j]
-        ax_suggested.scatter(xpos + jitter, all_blocks_df.loc[subject, i],
-                             color='grey', marker="o", s=dot_size, alpha=0.8,
-                             linewidths=0, zorder=2)
-        if i not in ['1', '2', '3']:
-            ax_suggested.scatter(xpos - width + jitter, pattern_blocks_df.loc[subject, i],
-                                 color=color1, marker="o", s=dot_size, alpha=0.8,
-                                 linewidths=0, zorder=2)
-            ax_suggested.scatter(xpos + width + jitter, random_high_blocks_df.loc[subject, i],
-                                 color=color2, marker="o", s=dot_size, alpha=0.8,
-                                 linewidths=0, zorder=2)
-
-mean_all_suggested, = ax_suggested.plot(
-    x, all_blocks_mean, '-o', color=color3, label="All", markersize=7,
-    alpha=.7, markeredgecolor="white", markeredgewidth=1.3, zorder=5)
-mean_pattern_suggested, = ax_suggested.plot(
-    x[3:] - width, pattern_blocks_mean[3:], '-o', color=color1,
-    label="Pattern", markersize=7, alpha=1, markeredgecolor="white",
-    markeredgewidth=1.3, zorder=5)
-mean_random_suggested, = ax_suggested.plot(
-    x[3:] + width, random_high_blocks_mean[3:], '-o', color=color2,
-    label="Random", markersize=7, alpha=1, markeredgecolor="white",
-    markeredgewidth=1.3, zorder=5)
-for mean_line in [mean_all_suggested, mean_pattern_suggested, mean_random_suggested]:
-    mean_line.set_path_effects(mean_path_effects)
-
-ax_suggested.legend(loc='lower left', frameon=False, title=f"N = {n}")
-ax_suggested.set_ylabel("Reaction time (ms)", fontsize=12)
-ax_suggested.spines['top'].set_visible(False)
-ax_suggested.spines['right'].set_visible(False)
-ax_suggested.xaxis.set_tick_params(labelbottom=False)
-
-divider = make_axes_locatable(ax_suggested)
-axlow_suggested = divider.append_axes("bottom", 1.2, pad=0.2, sharex=ax_suggested)
-axlow_suggested.autoscale()
-learning_indices = learn_index_blocks_df.loc[:, blocks]
-learning_indices_mean = learning_indices.mean(axis=0)
-learning_indices_stderr = learning_indices.std(axis=0)/np.sqrt(len(subjects))
-axlow_suggested.bar(x, learning_indices_mean, yerr=learning_indices_stderr,
-                    alpha=0.7, capsize=5, color="#029E73", width=bar_width,
-                    zorder=1)
-for subject_idx, subject in enumerate(subjects):
-    jitter = subject_jitter[subject_idx]
-    axlow_suggested.scatter(x + jitter, learn_index_blocks_df.loc[subject, blocks],
-                            color="#029E73", marker="o", s=dot_size,
-                            alpha=0.8, edgecolors="white", linewidths=0.45,
-                            zorder=3)
-axlow_suggested.axhline(0, color="0.2", linewidth=0.8, alpha=0.5, zorder=0)
-axlow_suggested.set_ylabel("Learning index (ms)", fontsize=12)
-axlow_suggested.spines['top'].set_visible(False)
-axlow_suggested.spines['right'].set_visible(False)
-axlow_suggested.set_xticks(x)
-axlow_suggested.set_xticklabels(blocks)
-axlow_suggested.set_xlabel("Block", fontsize=12)
-# fig_suggested.savefig(figures_dir / 'behav' / 'combined_blocks_suggested.pdf', transparent=True)
-# plt.close()
+fig.savefig(figures_dir / 'behav' / 'combined_blocks2.pdf', transparent=True, dpi=300)
+plt.close()

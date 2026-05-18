@@ -23,7 +23,7 @@ times = np.linspace(-0.2, 0.6, 82)
 
 networks = NETWORKS
 network_names = NETWORK_NAMES
-step = 2
+step = 1
 
 figures_dir = ensured(FIGURES_DIR / "RSA" / "source")
 
@@ -81,7 +81,7 @@ def plot_onset(ax):
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
     ax.axvspan(0, 0.2, facecolor='grey', edgecolor=None, alpha=.1)
-        
+
 def plot_with_br_title(fig, axd, design, title, row_idx, fontsize=14):
     """Add a central title for a specific row of 'br' plots."""
     # Extract only "br" subplot positions for the specific row
@@ -99,12 +99,12 @@ def crop_images(screenshot):
     cropped_screenshot = screenshot[nonwhite_row][:, nonwhite_col]
     return cropped_screenshot
 
-design = [['br11', 'br12', 'A1', 'B', 'C'], 
+design = [['br11', 'br12', 'A1', 'B', 'C'],
           ['br21', 'br22', 'D1', 'E', 'F'],
           ['br31', 'br32', 'G1', 'H', 'I'],
-          ['br41', 'br42', 'J1', 'K', 'L'], 
+          ['br41', 'br42', 'J1', 'K', 'L'],
           ['br51', 'br52', 'M1', 'N', 'O'],
-          ['br61', 'br62', 'P1', 'Q', 'R'], 
+          ['br61', 'br62', 'P1', 'Q', 'R'],
           ['br71', 'br72', 'S1', 'T', 'U'],
           ['br81', 'br82', 'V1', 'W', 'X'],
           ['br91', 'br92', 'Y1', 'Z', 'AA'],
@@ -118,9 +118,9 @@ cmap = ['#0173B2','#DE8F05','#029E73','#D55E00','#CC78BC','#CA9161','#FBAFE4','#
 plot_brains = False
 
 fig, axd = plt.subplot_mosaic(
-    design, 
-    sharex=False, 
-    figsize=(13, 18), 
+    design,
+    sharex=False,
+    figsize=(13, 18),
     layout='tight',
     gridspec_kw={
         'width_ratios': [.2, .2, .5, .5, .5]  # Adjust widths if needed
@@ -134,15 +134,15 @@ if plot_brains:
         # Initialize Brain object
         # Add labels
         if label in networks[:-3]:
-            brain = mne.viz.Brain(subject='fsaverage2', alpha=1, **brain_kwargs) 
-            net_name = f'{name.strip()} network'        
+            brain = mne.viz.Brain(subject='fsaverage2', alpha=1, **brain_kwargs)
+            net_name = f'{name.strip()} network'
             for hemi in ['lh', 'rh']:
             # hemi = 'split'
                 brain.add_label(f'{label}', color=cmap[i], hemi=hemi, borders=False, alpha=.85, subdir='n7')
         else:
-            brain = mne.viz.Brain(subject='fsaverage2', alpha=.5, **brain_kwargs) 
+            brain = mne.viz.Brain(subject='fsaverage2', alpha=.5, **brain_kwargs)
             net_name = f'{name.strip()}'
-            
+
             if label == 'Hippocampus':
                 labels = ['Left-Hippocampus', 'Right-Hippocampus']
             elif label == 'Thalamus':
@@ -241,6 +241,9 @@ for i, (label, name, j) in enumerate(zip(networks, network_names, ['B', 'E', 'H'
         print(f"[B] {name} — cluster {ci+1} ({times[start]:.3f}–{times[end-1]:.3f}s): "
               f"Cohen's d={cohen_d:.2f}")
 
+_contrast_export = {label: np.nanmean(diff_rp[label][:, 3:, :], 1).mean(0) for label in networks}
+_rhos_export = {}
+
 ### Plot learning index correlation ###
 seg_df = pd.read_csv(FIGURES_DIR / "TM" / "em_segments_rs_tr_source.csv")
 seg_df = seg_df[seg_df['metric'] == 'RS CORR']
@@ -262,6 +265,7 @@ for i, (label, name, j) in enumerate(zip(networks, network_names, ['C', 'F', 'I'
     axd[j].axhline(0, color="grey", alpha=0.5)
     all_rhos = np.array([[spear(learn_index_blocks.iloc[sub, :], diff_rp[label][sub, :, t])[0] for t in range(len(times))] for sub in range(len(subjects))])
     all_rhos, _, _ = fisher_z_and_ttest(all_rhos)
+    _rhos_export[label] = all_rhos.mean(0)
     sem = np.std(all_rhos, axis=0) / np.sqrt(len(subjects))
     # axd[j].plot(times, all_rhos.mean(0), color=cmap[i])
     p_values_unc = ttest_1samp(all_rhos, axis=0, popmean=0)[1]
@@ -297,6 +301,18 @@ fname = 'rsa_figure.pdf'
 fig.savefig(figures_dir / fname, transparent=True)
 plt.close()
 
+t_labels = np.round(times, 4)
+rows = []
+for network, name in zip(networks, network_names):
+    pat_mean = np.nanmean(pattern[network], 1).mean(0)
+    rand_mean = np.nanmean(random[network], 1).mean(0)
+    for t, time in enumerate(t_labels):
+        rows.append({'network': name, 'time': time,
+                     'pattern': pat_mean[t],
+                     'random': rand_mean[t],
+                     'contrast': _contrast_export[network][t],
+                     'correlation': _rhos_export[network][t]})
+pd.DataFrame(rows).set_index(['network', 'time']).to_csv(figures_dir / "rsa_source.csv")
 
 # save table correlations no practice
 rows = list()
@@ -332,10 +348,12 @@ for i, net in enumerate(sig_df['network'].unique()):
 # plot it
 times = np.linspace(-0.2, 0.6, 82)
 cmap = ['#0173B2','#DE8F05','#029E73','#D55E00','#CC78BC','#CA9161','#FBAFE4','#ECE133','#56B4E9', "#76B041"]
+_rhos_no_prac_export = {}
 fig, axes = plt.subplots(5, 2, figsize=(7, 9), sharey=True, sharex=True, layout="tight")
 for i, ax in enumerate(axes.flatten()):
     ax.axvspan(0, 0.2, facecolor='grey', edgecolor=None, alpha=.1)
     all_rhos = corr_rp[networks[i]]
+    _rhos_no_prac_export[network_names[i]] = all_rhos.mean(0)
     sem = np.std(all_rhos, axis=0) / np.sqrt(all_rhos.shape[0])
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
@@ -351,13 +369,21 @@ for i, ax in enumerate(axes.flatten()):
     # Highlight significant regions
     ax.fill_between(times, all_rhos.mean(0) - sem, all_rhos.mean(0) + sem, where=sig, alpha=0.5, zorder=5, color=cmap[i])
     ax.set_title(network_names[i], fontsize=13, fontstyle='italic')
-    
+
     if ax in axes[:, 0]:
         ax.set_ylabel("Spearman's rho", fontsize=11)
-    
+
     # Only set xlabel for axes in the bottom row
     if i >= (axes.shape[0] - 1) * axes.shape[1]:
         ax.set_xlabel("Time (s)", fontsize=11)
-    
+
 plt.savefig("/Users/coum/MEGAsync/figures/RSA/source/rsa_source_no_prac_corr.pdf", transparent=True)
 plt.close(fig)
+
+t_labels = np.round(times, 4)
+rows = []
+for name in network_names:
+    rho_mean = _rhos_no_prac_export[name]
+    for t, time in enumerate(t_labels):
+        rows.append({'network': name, 'time': time, 'correlation': rho_mean[t]})
+pd.DataFrame(rows).set_index(['network', 'time']).to_csv(figures_dir / "rsa_source_no_prac.csv")

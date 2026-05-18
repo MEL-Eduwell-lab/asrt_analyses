@@ -77,12 +77,12 @@ def plot_onset(ax):
     ax.axvspan(0, 0.2, facecolor='grey', edgecolor=None, alpha=.1)
 
 # Define subplot design layout
-design = [['br11', 'br12', 'A', 'B', 'C'], 
+design = [['br11', 'br12', 'A', 'B', 'C'],
           ['br21', 'br22', 'D', 'E', 'F'],
           ['br31', 'br32', 'G', 'H', 'I'],
-          ['br41', 'br42', 'J', 'K', 'L'], 
+          ['br41', 'br42', 'J', 'K', 'L'],
           ['br51', 'br52', 'M', 'N', 'O'],
-          ['br61', 'br62', 'P', 'Q', 'R'], 
+          ['br61', 'br62', 'P', 'Q', 'R'],
           ['br71', 'br72', 'S', 'T', 'U'],
           ['br81', 'br82', 'V', 'W', 'X'],
           ['br91', 'br92', 'Y', 'Z', 'AA'],
@@ -90,7 +90,7 @@ design = [['br11', 'br12', 'A', 'B', 'C'],
 
 cmap = ['#0173B2','#DE8F05','#029E73','#D55E00','#CC78BC','#CA9161','#FBAFE4','#ECE133','#56B4E9', "#76B041"]
 
-plt.rcParams.update({'font.size': 10, 'font.family': 'serif', 'font.serif': 'Arial'})
+plt.rcParams.update({'font.size': 10, 'font.family': 'sans-serif', 'font.sans-serif': 'Arial'})
 plot_brains = False
 
 fig, axes = plt.subplot_mosaic(design, figsize=(13, 18), sharey=False, sharex=False, layout="tight",
@@ -104,12 +104,12 @@ if plot_brains:
         # Initialize Brain object
         # Add labels
         if label in networks[:-3]:
-            brain = Brain(subject='fsaverage2', alpha=1, **brain_kwargs) 
+            brain = Brain(subject='fsaverage2', alpha=1, **brain_kwargs)
             for hemi in ['lh', 'rh']:
             # hemi = 'split'
                 brain.add_label(f'{label}', color=cmap[i], hemi=hemi, alpha=.85, subdir='n7')
         else:
-            brain = Brain(subject='fsaverage2', alpha=.5, **brain_kwargs) 
+            brain = Brain(subject='fsaverage2', alpha=.5, **brain_kwargs)
             if label == 'Hippocampus':
                 labels = ['Left-Hippocampus', 'Right-Hippocampus']
             elif label == 'Thalamus':
@@ -185,7 +185,7 @@ for i, (network, pattern_idx) in enumerate(zip(networks, ['A', 'D', 'G', 'J', 'M
         print(f"[Pattern] {network_names[i]} — cluster {ci+1} ({times[start]:.3f}–{times[end-1]:.3f}s): "
               f"Cohen's d={cohen_d:.2f}")
 
-### Random ###    
+### Random ###
 # Sig from GAMM
 seg_df = pd.read_csv(FIGURES_DIR / "TM" / "em_segments_pa_tr_pat_rand_source.csv")
 seg_df = seg_df[seg_df['metric'] == 'RANDOM']
@@ -250,7 +250,7 @@ for network in networks:
     if sig:
         print(f"Significant contrast for {network} in the window {times[win][0]} to {times[win][-1]}")
     msig.append(sig)
-    
+
 # Sig from GAMM
 # get significant time points from GAMM csv --- contrast
 seg_df = pd.read_csv(FIGURES_DIR / "TM" / "em_segments_pa_tr_cont_source.csv")
@@ -306,10 +306,24 @@ for i, (network, contrast_idx) in enumerate(zip(networks, ['C', 'F', 'I', 'L', '
 
 fig.savefig(figures_dir / "timeg-diag.pdf", transparent=True)
 
+t_labels = np.round(times, 4)
+rows = []
+for network in networks:
+    pat_mean = patterns[network][:, 3:].mean(1).mean(0)
+    rand_mean = randoms[network][:, 3:].mean(1).mean(0)
+    cont_mean = contrasts[network][:, 3:].mean(1).mean(0)
+    for t, time in enumerate(t_labels):
+        rows.append({'network': network, 'time': time,
+                     'pattern': pat_mean[t],
+                     'random': rand_mean[t],
+                     'contrast': cont_mean[t]})
+pd.DataFrame(rows).set_index(['network', 'time']).to_csv(figures_dir / "timeg_diag.csv")
+
 # Correlation with behavior
 from scipy.stats import spearmanr as spear
 learn_index_df = pd.read_csv(FIGURES_DIR / 'behav' / 'learning_indices_blocks.csv', sep=",", index_col=0)
 plt.rcParams.update({'font.size': 12, 'font.family': 'serif', 'font.serif': 'Arial'})
+_rhos_export = {}
 fig, axes = plt.subplots(5, 2, figsize=(7, 9), sharey=True, sharex=True, layout="tight")
 for i, ax in enumerate(axes.flatten()):
     ax.spines['top'].set_visible(False)
@@ -319,6 +333,7 @@ for i, ax in enumerate(axes.flatten()):
     network = networks[i]
     all_rhos = np.array([[spear(learn_index_df.iloc[sub, :], contrasts[network][sub, :, t])[0] for t in range(len(times))] for sub in range(len(subjects))])
     # all_rhos, _, _ = fisher_z_and_ttest(all_rhos)
+    _rhos_export[network] = all_rhos.mean(0)
     sem = np.std(all_rhos, axis=0) / np.sqrt(len(subjects))
     p_values = decod_stats(all_rhos, -1)
     sig = p_values < 0.05
@@ -346,3 +361,11 @@ for i, ax in enumerate(axes.flatten()):
     ax.set_xticks(np.arange(-1, 2, 0.5))
 
 fig.savefig(figures_dir / "timeg-corr.pdf", transparent=True)
+
+rows = []
+for network in networks:
+    rho_mean = _rhos_export[network]
+    for t, time in enumerate(t_labels):
+        rows.append({'network': network, 'time': time,
+                     'correlation': rho_mean[t]})
+pd.DataFrame(rows).set_index(['network', 'time']).to_csv(figures_dir / "timeg_diag_corr.csv")

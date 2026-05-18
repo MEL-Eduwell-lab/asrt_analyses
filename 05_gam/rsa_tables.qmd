@@ -54,12 +54,12 @@ data_path = Path(ensured("./gam/data"))
 figures_dir = FIGURES_DIR
 
 # --- SENSORS ---
-data_type = "rdm_blocks_new" 
+data_type = "rdm_blocks_new"
 all_pats, all_rands = [], []
 all_pats_blocks, all_rands_blocks = [], []
 for subject in subjects:
     res_path = RESULTS_DIR / 'RSA' / 'sensors' / data_type / subject
-    # read behav        
+    # read behav
     behav_dir = op.join(HOME / 'raw_behavs' / subject)
     sequence = get_sequence(behav_dir)
     pattern_blocks, random_blocks = [], []
@@ -82,7 +82,7 @@ for subject in subjects:
     all_rands.append(low.mean(0))
 all_pats = np.array(all_pats)
 all_rands = np.array(all_rands)
-# bsl_pat = np.nanmean(all_pats[:, :3, :], 1) 
+# bsl_pat = np.nanmean(all_pats[:, :3, :], 1)
 # bsl_rand = np.nanmean(all_rands[:, :3, :], 1)
 pat = all_pats
 rand = all_rands
@@ -170,19 +170,19 @@ options(scipen = 999)
 df.tmp <- read_csv(file.path(as.character(py$figures_dir), "behav/learning_indices_blocks.csv"))
 names(df.tmp) <- c('subject', as.character(1:23))
 
-df.tmp %>% 
+df.tmp %>%
   pivot_longer(cols = `1`:`23`,
                names_to = 'block',
                names_transform = as.double,
                values_to = 'value',
-               values_transform = ~round(.,1)) %>% 
+               values_transform = ~round(.,1)) %>%
   write_csv(paste0("./gam/data/behav_blocks_sensors_step", py$step, ".csv"))
 
 df.sensors <- bind_rows(
   read_csv(paste0("./05_gam/gam/data/rsa_sensors_tr_step", py$step, ".csv")) %>% mutate(metric = "RS", .before = 1),
   read_csv(paste0("./05_gam/gam/data/rsa_sensors_tr_corr_step", py$step, ".csv")) %>% mutate(metric = "RS CORR", .before = 1),
-) %>% 
-  mutate(across(c(subject), as.factor)) %>% 
+) %>%
+  mutate(across(c(subject), as.factor)) %>%
   mutate(across(c(time, value), as.numeric))
 
 df.sensors %>% mutate(NA.values = is.na(value)) %>% count(metric, time, NA.values)
@@ -200,7 +200,7 @@ time_values <- seq(-0.2, 0.6, length.out = 82)
 
 ```{r}
 models.rs <- df.sensors %>%
-  # filter(block >= 4) %>% 
+  # filter(block >= 4) %>%
   group_by(metric) %>%
   nest() %>%
   mutate(
@@ -213,7 +213,7 @@ models.rs <- df.sensors %>%
   )
 
 models.fs <- df.sensors %>%
-  # filter(block >= 4) %>% 
+  # filter(block >= 4) %>%
   group_by(metric) %>%
   nest() %>%
   mutate(
@@ -225,11 +225,11 @@ models.fs <- df.sensors %>%
                                 data = .x, method = "REML"))
   )
 
-model.all <- df.sensors %>% 
-  # filter(metric != "BEHAV") %>% 
-  group_by(metric) %>% 
+model.all <- df.sensors %>%
+  # filter(metric != "BEHAV") %>%
+  group_by(metric) %>%
   mutate(value_std = scale(value, center = FALSE, scale = TRUE)) %>% # standardization for meaningful comparison across metrics
-  mutate(metric = as.factor(metric)) %>% 
+  mutate(metric = as.factor(metric)) %>%
   gam(data = .,
       value_std ~ s(time, k = 10) +
         s(metric, time, bs="sz") +
@@ -244,14 +244,14 @@ model.all <- df.sensors %>%
 ```{r}
 # Apply emmeans
 tmp <- models.fs %>%
-  group_by(metric) %>% 
+  group_by(metric) %>%
   mutate(
     time_seq = map2(min_time, max_time, ~ seq(.x, .y, length.out = n.time)),
     emm = map2(gam_model, time_seq, ~ as_tibble(emmeans(.x, ~ time, at = list(time = .y))))
   )
 
 # Store emm + SE
-emm_meanse <- tmp %>% 
+emm_meanse <- tmp %>%
   select(emm) %>%
   unnest(emm)
 
@@ -269,7 +269,7 @@ emm_segments <- tmp %>%
         end   = df$time[ends[keep]]
       )
     })
-  ) %>% 
+  ) %>%
   select(segs) %>%
   unnest(segs)
 
@@ -308,8 +308,8 @@ df.to_csv(data_path / fname, index=False, sep=",")
 
 ```{python}
 # --- SOURCE ---
-step = 2
-data_type = "rdm_blocks" 
+step = 1
+data_type = "rdm_blocks"
 networks = NETWORKS
 network_names = NETWORK_NAMES
 diff_rp = {}
@@ -425,8 +425,8 @@ df.to_csv(data_path / fname, index=False, sep=",")
 df.source <- bind_rows(
   read_csv(paste0("./gam/data/rsa_source_tr_step", py$step, ".csv")) %>% mutate(metric = "RS", .before = 1),
   read_csv(paste0("./gam/data/rsa_source_tr_corr_step", py$step, ".csv")) %>% mutate(metric = "RS CORR", .before = 1)
-) %>% 
-  mutate(across(c(network, subject), as.factor)) %>% 
+) %>%
+  mutate(across(c(network, subject), as.factor)) %>%
   mutate(across(c(time, value), as.numeric))
 
 df.source %>% mutate(NA.values = is.na(value)) %>% count(network, metric, time, NA.values)
@@ -461,11 +461,11 @@ models.source.fs <- df.source %>%
                                 data = .x, method = "REML"))
   )
 
-model.source.all <- df.source %>% 
-  mutate(value_std = scale(value, center = FALSE, scale = TRUE)) %>% 
+model.source.all <- df.source %>%
+  mutate(value_std = scale(value, center = FALSE, scale = TRUE)) %>%
   mutate(metric = as.factor(metric),
          network = as.factor(network),
-         network_metric = interaction(network, metric)) %>% 
+         network_metric = interaction(network, metric)) %>%
   gam(data = .,
       value_std ~ s(time, k = 10) +
         s(network_metric, time, bs = "sz") +
@@ -479,14 +479,14 @@ model.source.all <- df.source %>%
 ```{r}
 # Apply emmeans
 tmp.source <- models.source.fs %>%
-  group_by(network, metric) %>% 
+  group_by(network, metric) %>%
   mutate(
     time_seq = map2(min_time, max_time, ~ seq(.x, .y, length.out = n.time.source)),
     emm = map2(gam_model, time_seq, ~ as_tibble(emmeans(.x, ~ time, at = list(time = .y))))
   )
 
 # Store emm + SE
-emm_meanse.source <- tmp.source %>% 
+emm_meanse.source <- tmp.source %>%
   select(network, metric, emm) %>%
   unnest(emm)
 
@@ -504,7 +504,7 @@ emm_segments.source <- tmp.source %>%
         end   = df$time[ends[keep]]
       )
     })
-  ) %>% 
+  ) %>%
   select(network, metric, segs) %>%
   unnest(segs)
 
@@ -588,10 +588,10 @@ for i, ax in enumerate(axes.flatten()):
     # Highlight significant regions
     ax.fill_between(times, all_rhos.mean(0) - sem, all_rhos.mean(0) + sem, where=sig, alpha=0.5, zorder=5, color=cmap[i])
     ax.set_title(network_names[i], fontsize=13, fontstyle='italic')
-    
+
     if ax in axes[:, 0]:
         ax.set_ylabel("Spearman's rho", fontsize=11)
-    
+
     # Only set xlabel for axes in the bottom row
     if i >= (axes.shape[0] - 1) * axes.shape[1]:
         ax.set_xlabel("Time (s)", fontsize=11)
