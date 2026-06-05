@@ -113,7 +113,7 @@ for ax, data, title in zip(axs.flat, [pats_blocks, rands_blocks], ["pattern", "r
     ax.set_ylabel("Training time (s)", fontsize=12)
     ax.set_xticks(np.arange(tmin, tmax, .5))
     ax.set_yticks(np.arange(tmin, tmax, .5))
-    ax.set_title(f"Time generalization in {title} trials", fontsize=14)
+    ax.set_title(f"Time generalization in {title} trials", fontsize=12)
     ax.axvline(0, color="k")
     ax.axhline(0, color="k")
     xx, yy = np.meshgrid(times[idx], times[idx], copy=False, indexing='xy')
@@ -154,8 +154,8 @@ norm = colors.Normalize(vmin=-0.1, vmax=0.1)
 images = []
 for ax, data, title, pval, vmin, vmax in zip(axs.flat, [contrasts, rhos], \
     ["Contrast (Pattern - Random)", "Contrast and learning correlation"], [pval_cont, pval_rhos], [-0.04, -0.04], [0.04, 0.04]):
-    # cmap = 'coolwarm' if ax == axs.flat[0] else "BrBG"
-    cmap = 'coolwarm' if ax == axs.flat[0] else "PuOr"
+    cmap = 'coolwarm' if ax == axs.flat[0] else "BrBG"
+    # cmap = 'coolwarm' if ax == axs.flat[0] else "PuOr_r"
     im = ax.imshow(data,
                     # norm=norm,
                     vmin=vmin,
@@ -168,7 +168,7 @@ for ax, data, title, pval, vmin, vmax in zip(axs.flat, [contrasts, rhos], \
     ax.set_ylabel("Training time (s)", fontsize=12)
     ax.set_xticks(np.arange(tmin, tmax, .5))
     ax.set_yticks(np.arange(tmin, tmax, .5))
-    ax.set_title(title, fontsize=14)
+    ax.set_title(title, fontsize=12)
     ax.axvline(0, color="k")
     ax.axhline(0, color="k")
     xx, yy = np.meshgrid(times[idx], times[idx], copy=False, indexing='xy')

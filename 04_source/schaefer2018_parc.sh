@@ -9,7 +9,7 @@ source $FREESURFER_HOME/SetUpFreeSurfer.sh
 
 # Single subject
 recon-all -s sub01 -i sub01.nii -all -qcache
-# to be sure be on 
+# to be sure be on
 mne watershed_bem -s fsaverage2 --overwrite
 mne make_scalp_surfaces -s fsaverage2 --force --overwrite
 
@@ -58,8 +58,14 @@ for subject in "${subjects[@]}"; do
     -f $SUBJECTS_DIR/$subject/stats/rh.Schaefer2018_${n_parcels}Parcels_${n_networks}Networks.stats \
     -b -a $SUBJECTS_DIR/$subject/label/rh.Schaefer2018_${n_parcels}Parcels_${n_networks}Networks.annot \
     $subject rh
-    
+
     echo "### $subject processing completed. ###"
 
 done
 echo "################## All subjects processed. ##################"
+
+# Deface subjects
+subjects=("sub01" "sub02" "sub04" "sub07" "sub08" "sub09" "sub10" "sub12" "sub13" "sub14" "sub15")
+for subject in "${subjects[@]}"; do
+    mri_deface "$subject.nii" talairach_mixed_with_skull.gca face.gca "${subject}_defaced.nii"
+done

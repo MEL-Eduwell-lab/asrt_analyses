@@ -57,6 +57,8 @@ if not use_decode:
             if sig_df[sig_df['label'] == net]['signif_holm'][i] == 'ns':
                 del sig_dict[net]
 
+all_rows = []
+
 for network in networks:
 
     # Get label names matching the directory names produced by timeg_net_subreg_merged.py:
@@ -171,3 +173,23 @@ for network in networks:
     df = pd.DataFrame(rows)
     if saving:
         df.to_csv(FIGURES_DIR / "TM" / "data" / f'{network}_subreg_merged_pa_tr.csv', index=False, sep=",")
+
+    # Accumulate group-mean for end-of-script export
+    for lname in label_names:
+        data = contrasts[lname].mean(1)  # (n_subjects, n_times)
+        mean = data.mean(0)
+        sem = data.std(0) / np.sqrt(len(subjects))
+        for t, time in enumerate(times):
+            all_rows.append({
+                "network": network,
+                "label": lname,
+                "time": np.round(time, 4),
+                "mean": mean[t],
+                "sem": sem[t],
+            })
+
+# Export consolidated group-mean source data across all networks
+if saving:
+    pd.DataFrame(all_rows).to_csv(
+        figures_dir / "timeg_net_subreg_merged_source_data.csv", index=False
+    )

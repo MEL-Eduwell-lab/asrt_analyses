@@ -7,6 +7,7 @@ from config import *
 import os.path as op
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 from tqdm.auto import tqdm
 from matplotlib import colors
 
@@ -145,13 +146,11 @@ cbar2.set_label("Difference in\naccuracy", rotation=270, fontsize=13)
 fig.savefig(figure_dir / "orig_and_reord.pdf", transparent=True)
 plt.close()
 
-# diag = np.diag(contrast.mean(0))
-# pval_diag = np.diag(pval)
-# times[pval_diag < threshold]
-
-# plt.plot(times, diag, color='blue')
-# sig = pval_diag < threshold
-# for t in [-3, -1.5, 0, 1.5, 3]:
-#     plt.axvspan(t, t+0.2, color="grey", alpha=0.1)
-# plt.axhline(0, color="k")
-# plt.fill_between(times, diag, where=sig, color="blue", alpha=0.2)
+# Export source data
+t_labels = np.round(times, 4)
+for _name, _mat in [("original", data_orig.mean(0)),
+                    ("reordered", data_reord.mean(0)),
+                    ("contrast", contrast.mean(0))]:
+    _df = pd.DataFrame(_mat, index=t_labels, columns=t_labels)
+    _df.index.name = "train_time"
+    _df.to_csv(figure_dir / f"orig_and_reord_{_name}.csv")

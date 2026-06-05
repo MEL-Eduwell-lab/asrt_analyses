@@ -309,7 +309,8 @@ df.to_csv(data_path / fname, index=False, sep=",")
 ```{python}
 # --- SOURCE ---
 step = 1
-data_type = "rdm_blocks"
+#data_type = "rdm_blocks"
+data_type = "rdm_blocks_vect"
 networks = NETWORKS
 network_names = NETWORK_NAMES
 diff_rp = {}

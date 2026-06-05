@@ -10,7 +10,6 @@ from config import *
 from scipy.stats import ttest_1samp, spearmanr as spear
 from tqdm.auto import tqdm
 from matplotlib.ticker import FuncFormatter, FormatStrFormatter
-import seaborn as sns
 
 jobs = -1
 
@@ -27,14 +26,15 @@ step = 1
 
 figures_dir = ensured(FIGURES_DIR / "RSA" / "source")
 
-# data_type = "rdm_blocks"
-data_type = "rdm_blocks_vect"
+data_type = "rdm_blocks"
+# data_type = "rdm_blocks_vect"
 bsl_practice = False
 
 # Load RSA data
 random = {}
 pattern = {}
 diff_rp = {}
+
 for network in tqdm(networks):
     if not network in diff_rp:
         diff_rp[network] =  []
@@ -111,8 +111,6 @@ design = [['br11', 'br12', 'A1', 'B', 'C'],
           ['br101', 'br102', 'AB1', 'AC', 'AD']]
 
 plt.rcParams.update({'font.size': 10, 'font.family': 'serif', 'font.serif': 'Arial'})
-cmap = plt.cm.get_cmap('tab20', len(network_names))
-cmap = sns.color_palette("colorblind", as_cmap=True)
 cmap = ['#0173B2','#DE8F05','#029E73','#D55E00','#CC78BC','#CA9161','#FBAFE4','#ECE133','#56B4E9', "#76B041"]
 
 plot_brains = False
@@ -210,7 +208,7 @@ for i, net in enumerate(sig_df['network'].unique()):
 for i, (label, name, j) in enumerate(zip(networks, network_names, ['B', 'E', 'H', 'K', 'N', 'Q', 'T', 'W', 'Z', 'AC'])):
     plot_onset(axd[j])
     axd[j].axhline(0, color='grey', alpha=.5)
-    diff = np.nanmean(diff_rp[label][:, 3:, :], 1)  # Exclude first 3 time points
+    diff = np.nanmean(diff_rp[label][:, 3:, :], 1)  # Exclude first 3 blocks
     sig = sig_dict[name] if name in sig_dict else np.zeros(diff.shape[1], dtype=bool)
     # Main plot
     axd[j].plot(times, diff.mean(0), alpha=1, label='Random - Pattern', zorder=10, color='C7')
@@ -244,6 +242,9 @@ for i, (label, name, j) in enumerate(zip(networks, network_names, ['B', 'E', 'H'
 _contrast_export = {label: np.nanmean(diff_rp[label][:, 3:, :], 1).mean(0) for label in networks}
 _rhos_export = {}
 
+# preserve uncentered diff_rp for the no-practice correlation (centering below uses all blocks)
+diff_rp_orig = {net: arr.copy() for net, arr in diff_rp.items()}
+
 ### Plot learning index correlation ###
 seg_df = pd.read_csv(FIGURES_DIR / "TM" / "em_segments_rs_tr_source.csv")
 seg_df = seg_df[seg_df['metric'] == 'RS CORR']
@@ -268,10 +269,6 @@ for i, (label, name, j) in enumerate(zip(networks, network_names, ['C', 'F', 'I'
     _rhos_export[label] = all_rhos.mean(0)
     sem = np.std(all_rhos, axis=0) / np.sqrt(len(subjects))
     # axd[j].plot(times, all_rhos.mean(0), color=cmap[i])
-    p_values_unc = ttest_1samp(all_rhos, axis=0, popmean=0)[1]
-    sig_unc = p_values_unc < 0.05
-    p_values = decod_stats(all_rhos, -1)
-    sig = p_values < 0.05
     sig = sig_dict[name] if name in sig_dict else np.zeros(all_rhos.shape[1], dtype=bool)
     # Main plot
     axd[j].plot(times, all_rhos.mean(0), alpha=1, label='Random - Pattern', zorder=10, color='C7')
@@ -296,11 +293,10 @@ for i, (label, name, j) in enumerate(zip(networks, network_names, ['C', 'F', 'I'
         axd[j].text(0.4, -0.2, sig_level, fontsize=20, ha='center', va='bottom', color=cmap[i], weight='bold')
     axd[j].set_ylim(-.3, .3)
     axd[j].set_yticks([-0.3, 0, 0.3])
-
 fname = 'rsa_figure.pdf'
 fig.savefig(figures_dir / fname, transparent=True)
-plt.close()
-
+# plt.close()
+# export source table
 t_labels = np.round(times, 4)
 rows = []
 for network, name in zip(networks, network_names):
@@ -314,7 +310,16 @@ for network, name in zip(networks, network_names):
                      'correlation': _rhos_export[network][t]})
 pd.DataFrame(rows).set_index(['network', 'time']).to_csv(figures_dir / "rsa_source.csv")
 
-# save table correlations no practice
+
+# -------------------- correlation without practice --------------------
+corr_no_prac = {}
+for network in networks:
+    diff_noprac = diff_rp_orig[network][:, 3:, :]
+    diff_noprac = diff_noprac - np.nanmean(diff_noprac, axis=1, keepdims=True)
+    all_rhos = np.array([[spear(learn_index_blocks.iloc[sub, 3:], diff_noprac[sub, :, t])[0] for t in range(len(times))] for sub in range(len(subjects))])
+    all_rhos, _, _ = fisher_z_and_ttest(all_rhos)
+    corr_no_prac[network] = all_rhos
+    # save table correlations no practice
 rows = list()
 for i, network in enumerate(networks):
     # get table
@@ -324,10 +329,10 @@ for i, network in enumerate(networks):
                 "network": network_names[i],
                 "subject": subject,
                 "time": t,
-                "value": corr_rp_no_prac[network][j, t]
+                "value": corr_no_prac[network][j, t]
             })
 df = pd.DataFrame(rows)
-fname = 'rsa_source_tr_all_corr_no_corr.csv' if data_type.endswith("new") else 'rsa_source_tr_corr.csv'
+fname = 'rsa_source_no_prac.csv'
 df.to_csv(FIGURES_DIR / "TM" / "data" / fname, index=False, sep=",")
 
 seg_df = pd.read_csv("/Users/coum/MEGAsync/figures/TM/em_segments_rs_tr_source_no_prac.csv")
@@ -352,7 +357,7 @@ _rhos_no_prac_export = {}
 fig, axes = plt.subplots(5, 2, figsize=(7, 9), sharey=True, sharex=True, layout="tight")
 for i, ax in enumerate(axes.flatten()):
     ax.axvspan(0, 0.2, facecolor='grey', edgecolor=None, alpha=.1)
-    all_rhos = corr_rp[networks[i]]
+    all_rhos = corr_no_prac[networks[i]]
     _rhos_no_prac_export[network_names[i]] = all_rhos.mean(0)
     sem = np.std(all_rhos, axis=0) / np.sqrt(all_rhos.shape[0])
     ax.spines['top'].set_visible(False)
@@ -361,7 +366,7 @@ for i, ax in enumerate(axes.flatten()):
     network = networks[i]
     # Main plot
     ax.plot(times, all_rhos.mean(0), alpha=1, zorder=10, color='C7')
-        # Plot significant regions separately
+    # Plot significant regions separately
     sig = sig_dict[network_names[i]] if network_names[i] in sig_dict else np.zeros(all_rhos.shape[1], dtype=bool)
     for start, end in contiguous_regions(sig):
         ax.plot(times[start:end], all_rhos.mean(0)[start:end], alpha=1, zorder=10, color=cmap[i])
@@ -369,16 +374,15 @@ for i, ax in enumerate(axes.flatten()):
     # Highlight significant regions
     ax.fill_between(times, all_rhos.mean(0) - sem, all_rhos.mean(0) + sem, where=sig, alpha=0.5, zorder=5, color=cmap[i])
     ax.set_title(network_names[i], fontsize=13, fontstyle='italic')
-
     if ax in axes[:, 0]:
         ax.set_ylabel("Spearman's rho", fontsize=11)
-
     # Only set xlabel for axes in the bottom row
     if i >= (axes.shape[0] - 1) * axes.shape[1]:
         ax.set_xlabel("Time (s)", fontsize=11)
 
-plt.savefig("/Users/coum/MEGAsync/figures/RSA/source/rsa_source_no_prac_corr.pdf", transparent=True)
-plt.close(fig)
+fname = "rsa_source_no_prac_corr2.pdf"
+plt.savefig(figures_dir / fname, transparent=True)
+# plt.close(fig)
 
 t_labels = np.round(times, 4)
 rows = []
@@ -387,3 +391,19 @@ for name in network_names:
     for t, time in enumerate(t_labels):
         rows.append({'network': name, 'time': time, 'correlation': rho_mean[t]})
 pd.DataFrame(rows).set_index(['network', 'time']).to_csv(figures_dir / "rsa_source_no_prac.csv")
+
+# plot correlation with learning, with and without practice overlayed
+fig, axes = plt.subplots(5, 2, figsize=(7, 9), sharey=True, sharex=True, layout="tight")
+for i, ax in enumerate(axes.flatten()):
+    ax.axhline(0, color='gray', linestyle='-', alpha=0.5)
+    ax.axvspan(0, 0.2, color='gray', alpha=0.1)
+    ax.plot(times, _rhos_no_prac_export[network_names[i]], label='No practice')
+    ax.plot(times, _rhos_export[networks[i]], label='With practice')
+    ax.set_title(network_names[i], fontsize=13, fontstyle='italic')
+    if ax in axes[:, 0]:
+        ax.set_ylabel("Spearman's rho", fontsize=11)
+    # Only set xlabel for axes in the bottom row
+    if i >= (axes.shape[0] - 1) * axes.shape[1]:
+        ax.set_xlabel("Time (s)", fontsize=11)
+    if i == 0:
+        ax.legend()

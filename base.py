@@ -16,7 +16,7 @@ def ensured(path):
     if not os.path.exists(path):
         os.makedirs(path, exist_ok=True)
     return path
-        
+
 def decod_stats(X, jobs):
     """Statistical test applied across subjects for Decoding"""
     # check input
@@ -24,7 +24,7 @@ def decod_stats(X, jobs):
         X = np.array(X)
 
     X = X.astype(np.float64)
-    
+
     # stats function report p_value for each cluster
     T_obs_, clusters, p_values, _ = permutation_cluster_1samp_test(
         X, out_type='mask', n_permutations=2**12, n_jobs=jobs,
@@ -118,21 +118,21 @@ def get_rdm(epoch, behav):
     # from tqdm.auto import tqdm
     from sklearn.covariance import LedoitWolf
     import pandas as pd
-    # Prepare the design matrix                        
+    # Prepare the design matrix
     ntrials = len(epoch)
     nconditions = 4
     design_matrix = np.zeros((ntrials, nconditions))
-    
+
     if type(behav) == pd.core.frame.DataFrame:
         y = behav["positions"]
     else:
         y = behav
-    
-    for icondi, condi in enumerate(y):            
-        # assert isinstance(condi, np.int64) 
+
+    for icondi, condi in enumerate(y):
+        # assert isinstance(condi, np.int64)
         design_matrix[icondi, condi-1] = 1
-    assert np.sum(design_matrix.sum(axis=1) == 1) == len(epoch)  
-    
+    assert np.sum(design_matrix.sum(axis=1) == 1) == len(epoch)
+
     meg_data_V = epoch
     _, nchs, ntimes = meg_data_V.shape
     meg_data_V = scipy.stats.zscore(meg_data_V, axis=0)
@@ -143,33 +143,33 @@ def get_rdm(epoch, behav):
     for ich in range(nchs):
         for itime in range(ntimes):
             y = meg_data_V[:, ich, itime]
-            
+
             model = sm.OLS(endog=y, exog=design_matrix, missing="raise")
             results = model.fit()
-            
+
             coefs[:, ich, itime] = results.params # (4, 248, 163)
             resids[:, ich, itime] = results.resid # (ntrials, 248, 163)
-    
-    # Calculate pairwise mahalanobis distance between regression coefficients        
+
+    # Calculate pairwise mahalanobis distance between regression coefficients
     rdm_times = np.zeros((nconditions, nconditions, ntimes))
     for itime in range(ntimes):
         response = coefs[:, :, itime] # (4, 248)
         residuals = resids[:, :, itime] # (51, 248)
-        
+
         # Estimate covariance from residuals
         lw_shrinkage = LedoitWolf(assume_centered=True)
         cov = lw_shrinkage.fit(residuals)
-        
+
         # Compute pairwise mahalanobis distances
         VI = np.linalg.inv(cov.covariance_) # inverse of covariance matrix needed for mahalonobis
         rdm = squareform(pdist(response, metric="mahalanobis", VI=VI))
         # rdm = squareform(pdist(response, metric="cosine"))
         assert ~np.isnan(rdm).any()
         rdm_times[:, :, itime] = rdm # rdm_times (4, 4, 163), rdm (4, 4)
-    
+
     return rdm_times
 
-    
+
 def get_inseq(sequence):
     """Get the pairs in the sequence."""
     # create list of possible pairs
@@ -178,24 +178,24 @@ def get_inseq(sequence):
     pairs_in_sequence.append(str(sequence[1]) + str(sequence[2]))
     pairs_in_sequence.append(str(sequence[2]) + str(sequence[3]))
     pairs_in_sequence.append(str(sequence[3]) + str(sequence[0]))
-    
+
     return pairs_in_sequence
 
-def print_proportions(subject, all_beh):    
+def print_proportions(subject, all_beh):
     #### get stimuli proportions
     print(f"###############    {subject}")
     for i, sess in zip(range(5), ['prac', 'b1', 'b2', 'b3', 'b4']):
         print(f"{sess}    ----------------------")
         unique, values = np.unique(all_beh[i].positions, return_counts=True)
         for un, val in zip(unique, values):
-            print(un, round((val/np.sum(values)*100), 2)) 
+            print(un, round((val/np.sum(values)*100), 2))
 
 def make_predictions(X, y, folds, jobs, scoring, verbose):
     # set-up the classifier and cv structure
     clf = make_pipeline(StandardScaler(), LogisticRegressionCV(multi_class="ovr", max_iter=100000, solver='saga', random_state=42)) # use JAX maybe
     # clf = make_pipeline(StandardScaler(), SGDRegressor(loss="squared_error", max_iter=100000, random_state=42)) # use JAX maybe
     clf = SlidingEstimator(clf, scoring=scoring, n_jobs=jobs, verbose=verbose) # get time of one sample (slide), try with less jobs maybe ?
-    cv = StratifiedKFold(folds, shuffle=True)   
+    cv = StratifiedKFold(folds, shuffle=True)
 
     pred = np.zeros((len(y), X.shape[-1]))
     pred_rock = np.zeros((len(y), X.shape[-1], len(set(y))))
@@ -217,12 +217,12 @@ def get_volume_estimate_time_course(stcs, fwd, subject, subjects_dir):
 
     Returns:
         dict: A dictionary with label names as keys and arrays of shape
-                (n_epochs, n_vertices_in_label, n_times) as values.    
+                (n_epochs, n_vertices_in_label, n_times) as values.
     """
     import numpy as np
     from mne import get_volume_labels_from_src
     from tqdm.auto import tqdm
-    
+
     labels = get_volume_labels_from_src(fwd['src'], subject, subjects_dir)
     vertices_info = dict()
     for label in labels:
@@ -343,10 +343,10 @@ def rsync_files(source, destination, options=""):
     try:
         # Construct the rsync command
         command = f"rsync {options} --progress --ignore-existing {source} {destination}"
-        
+
         # Execute the command
         result = subprocess.run(command, shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        
+
         # Decode and print the output and errors (if any)
         stdout = result.stdout.decode()
         stderr = result.stderr.decode()
@@ -360,7 +360,7 @@ def rsync_files(source, destination, options=""):
     except subprocess.CalledProcessError as e:
         print(f"An error occurred: {e.stderr.decode()}")
         return None
-    
+
 def get_in_out_seq(sequence, similarities, random_lows, analysis):
     """Get in-sequence and out-sequence similarity values based on the analysis type."""
     import numpy as np
@@ -395,26 +395,26 @@ def get_in_out_seq(sequence, similarities, random_lows, analysis):
 def get_all_high_low(pattern_data, random_data, sequence, block=True, step=1):
     """
     Extracts high and low similarity sets from RDMs based on a stimulus sequence.
-    
+
     Parameters:
         pattern_data: np.ndarray
             RDM for patterned stimuli:
                 - block=True: (n_blocks, n_timepoints, n_items, n_items)
                 - block=False: (n_epochs, n_timepoints, n_items, n_items)
-        
+
         random_data: np.ndarray
             RDM for random stimuli (same shape as pattern_data).
-        
+
         sequence: list[int]
             A list of 4 stimulus identifiers, e.g., [1, 2, 3, 4].
-        
+
         block: bool (default=True)
             If True, treats data as block-based; else session-based (cv-style).
-    
+
     Returns:
         high: np.ndarray
             Similarity values for pairs in the input sequence.
-        
+
         low: np.ndarray
             Corresponding values from the random data (used as "low" set).
     """
@@ -472,7 +472,7 @@ def cv_mahalanobis_parallel(X, y, n_jobs=-1, n_splits=10, verbose=True, shuffle=
     if shuffle:
         skf = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=42)
     else:
-        skf = KFold(n_splits=n_splits, shuffle=False)    
+        skf = KFold(n_splits=n_splits, shuffle=False)
 
     def compute_timepoint(t):
         X_t = X[:, :, t]
@@ -688,7 +688,7 @@ def interpolate_rdm_nan(rdm):
     Args:
         rdm: ndarray of shape (n_blocks, n_times, n_conditions, n_conditions)
         LOOCV Mahalanobis distances between conditions at each time point.
-        
+
     Returns:
         rdm: ndarray of shape (n_blocks, n_times, n_conditions, n_conditions)
         LOOCV Mahalanobis distances between conditions at each time point.
@@ -741,11 +741,11 @@ def svd_fast(vector_data):
 
 def get_train_test_blocks_net(data, fwd, behav, pick_ori, trial_type, block, blocks, rsa=False, verbose=False):
     """Helper function to get source data for training and testing."""
-    
+
     from mne import compute_covariance, compute_rank
     from mne.beamformer import make_lcmv, apply_lcmv_epochs
     import numpy as np
-    
+
     weight_norm = "unit-noise-gain-invariant" if pick_ori == 'vector' else "unit-noise-gain"
 
     this_block = behav.blocks == block
@@ -757,9 +757,9 @@ def get_train_test_blocks_net(data, fwd, behav, pick_ori, trial_type, block, blo
             out_blocks = (behav.blocks != block) & (behav.sessions != 0)
     else:
         out_blocks = behav.blocks != block
-    
+
     tt = behav.trialtypes == 2 if trial_type == 'random' else behav.trialtypes == 1
-        
+
     # compute training data
     tt_out_blocks = tt & out_blocks
     train_blocks = behav[tt_out_blocks]
@@ -771,7 +771,7 @@ def get_train_test_blocks_net(data, fwd, behav, pick_ori, trial_type, block, blo
     test_blocks = behav[tt_this_block]
     test_epochs = data[test_blocks.trials.values]
     ytest = test_blocks.positions
-    
+
     # compute noise covariance
     random = behav.trialtypes == 2
     noise_epochs = data[random & out_blocks]
@@ -784,17 +784,17 @@ def get_train_test_blocks_net(data, fwd, behav, pick_ori, trial_type, block, blo
     # apply LCMV beamformer to epochs
     stcs_train = apply_lcmv_epochs(train_epochs, filters=filters, verbose=verbose)
     stcs_test = apply_lcmv_epochs(test_epochs, filters=filters, verbose=verbose)
-    
+
     return stcs_train, stcs_test, ytrain, ytest
 
 def get_train_test_blocks_htc(data, fwd, behav, pick_ori, trial_type, block, blocks, rsa=False, verbose=False):
     """Helper function to get source data for training and testing."""
-    
+
     from mne import compute_covariance, compute_rank
     from mne.beamformer import make_lcmv, apply_lcmv_epochs
-    
+
     weight_norm = "unit-noise-gain-invariant" if pick_ori == 'vector' else "unit-noise-gain"
-    
+
     this_block = behav.blocks == block
     if not rsa:
         if block in blocks[:3]:
@@ -808,7 +808,7 @@ def get_train_test_blocks_htc(data, fwd, behav, pick_ori, trial_type, block, blo
     tt = behav.trialtypes == 2 if trial_type == 'random' else behav.trialtypes == 1
     tt_out_blocks = tt & out_blocks
     tt_this_block = tt & this_block
-        
+
     # compute training data
     train_blocks = behav[tt_out_blocks]
     train_epochs = data[train_blocks.trials.values]
@@ -830,7 +830,7 @@ def get_train_test_blocks_htc(data, fwd, behav, pick_ori, trial_type, block, blo
     stcs_test = apply_lcmv_epochs(test_epochs, filters=filters, verbose=verbose)
     ytest = test_blocks.positions
     assert len(stcs_test) == len(ytest), "Length mismatch in testing data"
-    
+
     return stcs_train, ytrain, stcs_test, ytest
 
 def fisher_z_and_ttest(rho_matrix):
@@ -838,10 +838,10 @@ def fisher_z_and_ttest(rho_matrix):
     from scipy.stats import ttest_1samp
     """
     Applies Fisher z-transform and performs a one-sample t-test against 0 at each timepoint.
-    
+
     Parameters:
         rho_matrix (np.ndarray): Array of shape (n_subjects, n_timepoints) with rho values.
-    
+
     Returns:
         z_matrix (np.ndarray): Fisher z-transformed correlations, same shape as input.
         t_stats (np.ndarray): T-statistics at each timepoint, shape (n_timepoints,).
@@ -849,22 +849,22 @@ def fisher_z_and_ttest(rho_matrix):
     """
     # Clip rho values to avoid infinite z
     rho_matrix = np.clip(rho_matrix, -0.999999, 0.999999)
-    
+
     # Fisher z-transform
     z_matrix = 0.5 * np.log((1 + rho_matrix) / (1 - rho_matrix))
 
     # One-sample t-test at each timepoint
     t_stats, p_vals = ttest_1samp(z_matrix, popmean=0, axis=0)
-    
+
     return z_matrix, t_stats, p_vals
 
 def fisher_z_transform_3d(rho_3d):
     """
     Apply Fisher's z-transformation to a 3D array of correlation coefficients.
-    
+
     Parameters:
         rho_3d (np.ndarray): Array of shape (n_subjects, n_timepoints, n_timepoints)
-    
+
     Returns:
         z_3d (np.ndarray): Fisher z-transformed array, same shape as input.
     """

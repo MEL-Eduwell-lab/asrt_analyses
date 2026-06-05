@@ -27,7 +27,7 @@ jobs = -1
 def int_to_unicode(array):
         return ''.join([str(chr(int(ii))) for ii in array]) # permet de convertir int en unicode (pour editops)
 
-def process_subject(subject, mode_ICA, generalizing, filtering, overwrite, jobs, verbose):      
+def process_subject(subject, mode_ICA, generalizing, filtering, overwrite, jobs, verbose):
         # Set path
         data_path = RAW_DATA_DIR
         if generalizing:
@@ -50,9 +50,9 @@ def process_subject(subject, mode_ICA, generalizing, filtering, overwrite, jobs,
         behav_sessions = [behav_files[-1]] + behav_files[:-1]
         # Loop across sessions
         for session_num, meg_session, behav_session in zip([0, 1, 2, 3, 4], meg_sessions, behav_sessions):
-                
+
                 if not op.exists(op.join(res_path, 'epochs', f'{subject}-{session_num}-epo.fif')) or overwrite:
-                
+
                         # Read the raw data
                         raw_fname = op.join(data_path, subject, 'meg_data', meg_session, 'results', 'c,rfDC_EEG')
                         hs_fname = op.join(data_path, subject, "meg_data", meg_session, "hs_file")
@@ -112,7 +112,7 @@ def process_subject(subject, mode_ICA, generalizing, filtering, overwrite, jobs,
                                         samples.append(int(line.split()[column_names.index('sample')]))
                                         start.append(0)
                                         end.append(int(line.split()[column_names.index('value')]))
-                                events = np.vstack([np.array(samples), np.array(start), np.array(end)]).T 
+                                events = np.vstack([np.array(samples), np.array(start), np.array(end)]).T
                         else:
                                 events = mne.find_events(raw, shortest_event=1, verbose=verbose) # shortest_event=1 for sub06, sub08, sub14 and possibly others
                         if subject == 'sub05' and session_num == 0:
@@ -132,7 +132,7 @@ def process_subject(subject, mode_ICA, generalizing, filtering, overwrite, jobs,
                                         for ii in range(len(events) - 2):
                                                 if events[ii, 2] in triggs:
                                                         event_stim = events[ii]
-                                                        event_stim[0] = event_stim[0] + 97 # To re-synchronize with photodiode time-samples 
+                                                        event_stim[0] = event_stim[0] + 97 # To re-synchronize with photodiode time-samples
                                                         event_stim[2] = {542: 30, 544: 32, 546: 34, 548: 36, 550: 38, 552: 40}.get(event_stim[2], event_stim[2])
                                                         events_stim.append(event_stim)
                                 else:
@@ -142,7 +142,7 @@ def process_subject(subject, mode_ICA, generalizing, filtering, overwrite, jobs,
                                                         event_stim = events[ii]
                                                         event_stim[2] = {542: 30, 544: 32, 546: 34, 548: 36, 550: 38, 552: 40}.get(event_stim[2], event_stim[2])
                                                         events_stim.append(event_stim)
-                                events_stim = np.array(events_stim)                
+                                events_stim = np.array(events_stim)
                         # Read behav data
                         fname_behav = op.join(data_path, subject, 'behav_data', behav_session)
                         behav = open(fname_behav, 'r')
@@ -203,7 +203,7 @@ def process_subject(subject, mode_ICA, generalizing, filtering, overwrite, jobs,
                         print("Final number of epochs: ", len(epochs), "out of", 255 if session_num == 0 else 425)
                 else:
                         print(f"Epochs for {subject} {meg_session} already exist, skipping...")
-        
+
 if is_cluster:
     # Check that SLURM_ARRAY_TASK_ID is available and use it to get the subject
     try:

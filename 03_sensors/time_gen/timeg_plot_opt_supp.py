@@ -143,17 +143,37 @@ ax3.grid(which='minor', alpha=0.15, linestyle=':')
 plt.savefig(figure_dir / "timeg_opt_block_supp.pdf", dpi=300, transparent=True)
 plt.close()
 
-# export table of contrast (sharpening - dampening) at trial and block level
-rows = list()
+# Export source data — trial level (ax1a, ax1b)
+t_labels = np.round(times[win], 4)
+rows = []
 for i, subject in enumerate(subjects):
-    for t, time in enumerate(times[win]):
-        rows.append({"subject": subject, "time": time, "value": contrast_mean[i, t]})
-df = pd.DataFrame(rows)
-df.to_csv(FIGURES_DIR / "TM" / "data" / "timeg_sensors_contrast_opt_tr.csv", index=False, sep=",")
+    for t, time in enumerate(t_labels):
+        rows.append({"subject": subject, "time": time,
+                     "pattern": pats_mean[i, t], "random": rands_mean[i, t],
+                     "contrast": contrast_mean[i, t]})
+pd.DataFrame(rows).to_csv(figure_dir / "timeg_opt_block_supp_trial.csv", index=False)
 
-rows = list()
+# Export source data — block level (ax2, ax3)
+rows = []
 for i, subject in enumerate(subjects):
-    for block in range(contrast_blocks.shape[1]):
-        rows.append({"subject": subject, "time": block + 1, "value": contrast_blocks[i, block]})
-df = pd.DataFrame(rows)
-df.to_csv(FIGURES_DIR / "TM" / "data" / "timeg_sensors_contrast_opt_br.csv", index=False, sep=",")
+    for b, block in enumerate(blocks):
+        rows.append({"subject": subject, "block": int(block),
+                     "sharpening": sharp[i, b], "dampening": damp[i, b],
+                     "contrast": contrast_blocks[i, b]})
+pd.DataFrame(rows).to_csv(figure_dir / "timeg_opt_block_supp_block.csv", index=False)
+
+
+# # export table of contrast (sharpening - dampening) at trial and block level
+# rows = list()
+# for i, subject in enumerate(subjects):
+#     for t, time in enumerate(times[win]):
+#         rows.append({"subject": subject, "time": time, "value": contrast_mean[i, t]})
+# df = pd.DataFrame(rows)
+# df.to_csv(FIGURES_DIR / "TM" / "data" / "timeg_sensors_contrast_opt_tr.csv", index=False, sep=",")
+
+# rows = list()
+# for i, subject in enumerate(subjects):
+#     for block in range(contrast_blocks.shape[1]):
+#         rows.append({"subject": subject, "time": block + 1, "value": contrast_blocks[i, block]})
+# df = pd.DataFrame(rows)
+# df.to_csv(FIGURES_DIR / "TM" / "data" / "timeg_sensors_contrast_opt_br.csv", index=False, sep=",")

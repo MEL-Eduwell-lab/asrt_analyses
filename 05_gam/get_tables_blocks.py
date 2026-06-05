@@ -14,12 +14,12 @@ win = np.where((times >= 0.3) & (times <= 0.5))[0]
 c1, c2 = "#5BBCD6", "#00A08A"
 
 # --- RSA sensors --- blocks ---
-data_type = "rdm_blocks" 
+data_type = "rdm_blocks"
 all_pats, all_rands = [], []
 all_pats_blocks, all_rands_blocks = [], []
 for subject in tqdm(subjects):
     res_path = RESULTS_DIR / 'RSA' / 'sensors' / data_type / subject
-    # read behav        
+    # read behav
     behav_dir = op.join(HOME / 'raw_behavs' / subject)
     sequence = get_sequence(behav_dir)
     pattern_blocks, random_blocks = [], []
@@ -42,7 +42,7 @@ for subject in tqdm(subjects):
     all_rands.append(low.mean(0))
 all_pats = np.array(all_pats)
 all_rands = np.array(all_rands)
-bsl_pat = np.nanmean(all_pats[:, :3, :], 1) 
+bsl_pat = np.nanmean(all_pats[:, :3, :], 1)
 bsl_rand = np.nanmean(all_rands[:, :3, :], 1)
 pat = all_pats - bsl_pat[:, np.newaxis, :]
 rand = all_rands - bsl_rand[:, np.newaxis, :]
@@ -200,7 +200,7 @@ for i, (ax, network) in enumerate(zip(axes.flatten(), networks)):
     ax.plot(times, np.nanmean(data, axis=(0, 1)), color=c1)
     ax.axhline(0, color='grey', linestyle='-', alpha=0.5)
     sig = decod_stats(np.nanmean(data, axis=(1)), -1) < 0.05
-    ax.fill_between(times, np.nanmean(data, axis=(0, 1)), 0, where=sig, color='red', alpha=0.3) 
+    ax.fill_between(times, np.nanmean(data, axis=(0, 1)), 0, where=sig, color='red', alpha=0.3)
     ax.set_title(network_names[i], fontstyle='italic')
     smoothed = gaussian_filter1d(np.nanmean(data, axis=(0, 1)), sigma=1.5)
     mdiff = np.nanmean(data[:, :, win], axis=(1, -1))
@@ -303,22 +303,22 @@ for i, ax in enumerate(axes.flatten()):
     # Highlight significant regions
     ax.fill_between(times, all_rhos.mean(0) - sem, all_rhos.mean(0) + sem, where=sig, alpha=0.5, zorder=5, color=cmap[i])
     ax.set_title(network_names[i], fontsize=13, fontstyle='italic')
-    
+
     if ax in axes[:, 0]:
         ax.set_ylabel("Spearman's rho", fontsize=11)
-    
+
     # Only set xlabel for axes in the bottom row
     if i >= (axes.shape[0] - 1) * axes.shape[1]:
         ax.set_xlabel("Time (s)", fontsize=11)
-    
+
 plt.savefig("/Users/coum/MEGAsync/figures/RSA/source/rsa_source_no_prac_corr.pdf", transparent=True)
 plt.close(fig)
 
 
 """""
- - - ---- --- -- - -- --- - -- - - -- -- - - - - - - --- TEMPORAL GENERALIZATION -  - - - -- - - - - -  - - - - - - - - -- - - - - ---- --- - - - - - 
+ - - ---- --- -- - -- --- - -- - - -- -- - - - - - - --- TEMPORAL GENERALIZATION -  - - - -- - - - - -  - - - - - - - - -- - - - - ---- --- - - - - -
 """""
-    
+
 # --- Temporal generalization sensors --- blocks ---
 data_type = 'scores_lobotomized'
 subjects = SUBJS15
@@ -719,7 +719,7 @@ for network in networks:
         corr_network[network].append(np.array([spear(learn_index_blocks.iloc[s], cont_tr[network][s, :, t])[0] for t in range(len(idxt))]))
     corr_network[network] = np.array(corr_network[network])
     corr_network[network], _, _ = fisher_z_and_ttest(corr_network[network])
-    
+
 # save time resolved diagonal correlations
 rows = list()
 for i, network in enumerate(networks):
@@ -735,7 +735,7 @@ for i, network in enumerate(networks):
 df = pd.DataFrame(rows)
 df_fname = 'timeg_source-tr_cont-corr_all.csv' if data_type.endswith("new") else 'timeg_source-tr_cont-corr.csv'
 df.to_csv(FIGURES_DIR / "TM" / "data" / df_fname, index=False, sep=",")
-    
+
 ensured(FIGURES_DIR / "temp" / "timeg_pval")
 # Contrast
 cmap1 = "RdBu_r"
