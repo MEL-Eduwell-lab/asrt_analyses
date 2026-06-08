@@ -52,6 +52,7 @@ evoked = epochs.average()
 plt.rcParams.update({'font.size': 14, 'font.family': 'serif', 'font.serif': 'Arial'})
 
 fig, ax = plt.subplots(1, 1, figsize=(12, 4), layout='tight')
+ax.axvspan(0, 0.2, color='grey', alpha=0.1)
 evoked.plot(axes=ax)
 # remove the "N_ave" annotation
 for text in list(ax.texts):
