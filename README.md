@@ -1,4 +1,4 @@
-# 🧠 Code and data corresponding to [this manuscript]([https://doi.org/10.1101/2025.08.18.670891])
+# 🧠 Code and data corresponding to [this manuscript](https://doi.org/10.1101/2025.08.18.670891)
 
 Learning regularities in noise engages both neural predictive activity and representational changes
 ===================================================================================================
