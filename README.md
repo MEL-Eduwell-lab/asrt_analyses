@@ -1,4 +1,4 @@
-# 🧠 Code and data corresponding to [this manuscript](https://doi.org/10.1101/2025.08.18.670891)
+# 🧠 Code and data corresponding to [this manuscript]([https://doi.org/10.1101/2025.08.18.670891](https://www.nature.com/articles/s41467-026-74824-0))
 
 Learning regularities in noise engages both neural predictive activity and representational changes
 ===================================================================================================
@@ -15,7 +15,7 @@ The ability to extract structured sensory patterns from a noisy environment is f
 
 ## 🚀 Data
 
-Raw data will be made publicly available on a hosting platform prior to publication. 
+Raw data are available [here](https://openneuro.org/datasets/ds008017/versions/1.0.0). 
 
 ## 👨‍💻 How to use
 
